@@ -1,0 +1,241 @@
+
+{-# LANGUAGE RankNTypes #-}
+module ArrangeMode(arrangeMode) where
+
+import ControllerCommon
+
+import ArrangeMode2 hiding (renderPlayPos)
+
+entryToggleKey = Shift
+rootSeqCopyKey = RowPos$Top 5
+playPosSetterKey = RowPos$Side 7
+
+-- arrangeMode :: AppMode
+-- arrangeMode = arrangeMode2
+-- arrangeMode_old =
+--   overrideUpdateFlag UpdateLastTouched $
+--     runModes [
+--       contOptionTogglerWith (RowPos$ Top 0) arrView2active arrangeMode2
+--       , arrViewNotesToggler (RowPos$Top 1)
+--       , runModeIfDown [RowPos$Top 6, RowPos$Top 5] (seqVariationSelector StrongRed)
+--       , runModeIfDown [RowPos$Top 7] channelSelector
+--       , runModeIfDown [RowPos$Top 6] (seqSelectMode StrongGreen)
+--     ] (
+--         (runModes [
+--           runModeIfDown [RowPos$Side 6] playLoopSetter
+--           ,runModeIfDown [RowPos$Side 7] transportMode
+--           ,runModeIfDown [Shift] (masterToggler (RowPos$Top 0))
+--           ] (viewOffsetSelector (arrViewOffset._2)))
+--         <> runModeIfHeld [RowPos$Top 2]
+--               (viewMover  Top (Nothing, Nothing, Just 3))
+--               (viewMover  Top (Just 2,Just 3, Nothing))
+--
+--         <> arrangeModeCore
+--       )
+--
+-- viewMover :: (Int -> RowIndex) -> (Maybe Int, Maybe Int, Maybe Int) -> AppMode
+-- viewMover inpConstructor keys = nopMode{
+--   _update = simpleUpdate $ \appInf inp m funcs ->
+--     (keys^..each)
+--     & mapInd(,)
+--     & find (\(k,_) -> (isJust k) && (k&fmap inpConstructor)== getDownRowPos (inp^.ev))
+--     >>= (\(_,i)->
+--         case i of
+--           0 -> Just $
+--             m&stepViewOffset (-1)
+--           1 -> Just $
+--             m&stepViewOffset 1
+--           2 -> Just $ m&focusPlayPosCurrentTrack funcs appInf
+--           _ -> Nothing -- This should never trigger, but let's make ghc happy
+--       )
+-- }
+--
+--
+--
+--
+--
+--
+--
+-- seqCycling :: AppMode
+-- seqCycling = nopMode{
+--   _update = simpleUpdate $ \_ inp m _ ->
+--     case inp^.ev of
+--       InDown(RowPos(Top 0)) -> Just $ m&cycleSeq (-1)
+--       InDown(RowPos(Top 1)) -> Just $ m&cycleSeq 1
+--       _ -> Nothing
+-- }
+--
+--
+-- cycleSeq :: Int -> SeqModel -> SeqModel
+-- cycleSeq step m =
+--   m&curTrackEntry %~ (seqId._1 %~ ( m^._1&cycleId step))
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+-- arrangeModeCore = AppMode renderPlayPos  ArrangeMode.update ArrangeMode.render
+--
+--
+--
+-- update :: AppModeUpdate
+-- update appInf input m funcs =
+--   mbNewMod&fmap(\(newMod, actions) -> ((), flag, newMod, actions))
+--   where
+--     flag =
+--       case input^.ev of
+--         InDown (GridXY _ _) ->
+--           UpdateLastTouched
+--         InDown (RowPos(Side 5)) -> UpdateLastTouched
+--         InDown (RowPos(Side 4)) -> UpdateLastTouched
+--         _ -> UpdateSingle
+--
+--     mbNewMod = mainUpdate appInf input m funcs
+--
+--
+--
+-- mainUpdate :: AppInfo -> InputState -> SeqModel -> ControllerFunctions -> Maybe (SeqModel, [t])
+-- mainUpdate appInf input m funcs =
+--   mbNewModel&fmap(\newM -> (newM, []))
+--   where
+--     mbNewModel =
+--       case input^.ev of
+--         InDown cell -> case cell of
+--           GridXY x y ->
+--             let
+--               teInd = x+(m^._2.arrViewOffset._1)
+--               trackInd = y + (m^._2.arrViewOffset._2)
+--               contModel = m^._2
+--             in
+--               Just $
+--                 if (input^.isDoubleTap) || (input&keyDown entryToggleKey) then
+--                   m & toggleTrackEntry trackInd teInd
+--                   & selectIfValid trackInd teInd
+--                 else if contModel&curTrackEntryHeld input then
+--                   if input&keyDown rootSeqCopyKey then
+--                     m&copyRootNoteSeq (contModel^.curTrackIndex, contModel^.selectedTrackPos) (trackInd, teInd)
+--                   else
+--                     m&copyCurTrackEntryTo teInd trackInd
+--                 else
+--                   m&selectIfValid trackInd teInd
+--           _ -> Nothing
+--         _ -> Nothing
+--
+--
+-- curTrackEntryHeld:: InputState -> ControllerState -> Bool
+-- curTrackEntryHeld inp cont =
+--   inp&keyDown (GridXY ind trackInd)
+--   where
+--     ind = (cont^.selectedTrackPos)-(cont^.arrViewOffset._1)
+--     trackInd = (cont^.curTrackIndex) - (cont^.arrViewOffset._2)
+--
+--
+--
+-- trackEntryCol :: Maybe TrackEntry -> ArrTrack -> Int -> a -> a -> a
+-- trackEntryCol mbSelectedEntry track ind sameSeqCol normalCol =
+--   fromMaybe normalCol $ do
+--     let e = (track^.trackEntries)^?ix ind
+--     guard (hasSameSeq mbSelectedEntry e)
+--     (return sameSeqCol)
+--
+--
+-- renderOccupiedTrackEntries :: ArrTrack -> Maybe TrackEntry -> [(Int, Color)]
+-- renderOccupiedTrackEntries track mbSelTrackEntry =
+--   (track^.trackEntries\>sparseListFromMap)&(mapInd (,))&mapMaybe (\(maybyEntry, ind) ->
+--       let
+--         col = trackEntryCol mbSelTrackEntry track ind StrongGreen StrongRed
+--       in
+--         maybyEntry >>= (const . Just $ (ind, col))
+--     )
+--
+--
+-- render :: AppModeRender
+-- render appInf input m funcs =
+--   concat [
+--     selectionIndicator
+--     ,trackRenders
+--   ]
+--   where
+--     (sharedMod, contState) = m
+--     (offsetX, offsetY) = m^._2.arrViewOffset
+--     selectedInd = contState^.selectedTrackPos
+--
+--
+--     selectionIndicator =
+--       if (m&curTrackHasEntry selectedInd)&& (not $ input&keyDown (RowPos$ Side 6))then
+--         [ (GridXY (selectedInd-offsetX) ((m^._2.curTrackIndex)-offsetY), StrongAmber)]
+--       else []
+--
+--     trackRenders = fromMaybe [] $ do
+--       let selTrackEntry = m^?curTrackEntry
+--       tracks <- m^?curArrangement
+--       return $
+--         tracks
+--         & S.drop offsetY
+--         & S.mapWithIndex(\trackInd track->
+--           renderOccupiedTrackEntries track selTrackEntry
+--           & filter (\(ind, _ {- col -}) -> ind >= offsetX && ind < (funcs&viewWidth)+offsetX)
+--           & map(\(ind, col)->
+--            (GridXY (ind-offsetX) trackInd, col)
+--           )
+--         )
+--         & concat
+--
+--
+-- renderPlayPos :: AppInfo -> InputState -> SeqModel -> ControllerFunctions -> [RenderEntry]
+-- renderPlayPos appInf input m funcs = fromMaybe [] $ do
+--   tracks <- m^?curArrangement
+--   return $
+--     tracks
+--     \> S.mapWithIndex(\origTrackInd track ->
+--       let
+--         ind = fst $ trackEntryIndexFromSongPos (Just track) (appInf^.appPlayerState&getPlayerPos) (m^._1)
+--       in
+--         if track&trackHasEntry ind then
+--           let
+--             (offset, offsetY) = (m^._2.arrViewOffset)
+--             trackInd = origTrackInd - offsetY
+--             offsInd = ind - offset
+--             isCurrent = trackInd == m^._2.curTrackIndex && ind == m^._2.selectedTrackPos
+--             (teStart, teEnd) = getLoopEdges appInf track m
+--             isLoopEdge = ind == teStart || ind == (teEnd-1)
+--             loopKeyDown = input&keyDown (RowPos $ Side 6)
+--             col =
+--               if (isLoopEdge && loopKeyDown) || (isCurrent && (not $ loopKeyDown))  then
+--                 WeakAmber
+--               else
+--                 trackEntryCol (m^?curTrackEntry) track ind WeakGreen WeakRed
+--           in
+--             [ (GridXY offsInd trackInd, col)]
+--         else
+--           []
+--     )
+--     & concat
+--
+--
+--
+--
+--
+--
+--
+-- copyRootNoteSeq :: (Int,Int) -> (Int,Int) -> SeqModel -> SeqModel
+-- copyRootNoteSeq (srcTrack, srcEntry) (dstTrack, dstEntry) m =
+--   undefined -- TODO: implement again
+--   -- fromMaybe m $ do
+--   --   srcNotes <- m^?focusSeq srcTrack srcEntry
+--   --   return $
+--   --     m&(focusSeq dstTrack dstEntry) .~ srcNotes
+--   --
+--   -- where
+--   --   focusSeq :: Int -> Int -> Traversal' SeqModel RootNoteMap
+--   --   focusSeq trackInd entInd =
+--   --     _1.arrTracks.ix trackInd.trackEntries.ix entInd.rootNoteSeq
+--
+--
+--
+--

@@ -1,0 +1,128 @@
+name:                mseq
+version:             0.1.0.0
+synopsis:            Initial project template from stack
+description:         Please see README.md
+homepage:            https://github.com/githubuser/mseq#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Author name here
+maintainer:          example@example.com
+copyright:           2016 Author name here
+category:            Web
+build-type:          Simple
+-- extra-source-files:
+cabal-version:       >=1.10
+
+flag usePortMidi
+    default: True
+library
+  hs-source-dirs:      src
+  exposed-modules:     Lib
+                      ,Sequencer
+                      ,SequenceRender
+                      , LaneActions
+                      , Launchpad
+                      , Player
+                      , Misc
+                      , ControllerCommon
+                      , ApcMini
+                      , ZMidiHelpers
+                      , AppMode
+                      , Modes
+                      , AppModeName
+                      , RootNoteMode
+                      , SeqSelectMode
+                      , ArrangeMode
+                      , ArrangeMode2
+                      , Input
+                      , SeqTypes
+                      , SeqConstants
+                      , SeqLenses
+                      , SeqEditMode
+                      , ControllerFunctions
+                      , StateFileIO
+                      , NetworkPlay
+                      , LensExtra
+                      , ArrangementActions
+                      , ClockExtra
+                      , SeqQueries
+                      , SeqEditActions
+                      , Recorder
+                      , LaneMode
+                      , GenericModes
+                      , Transport
+                      , Config
+                      , PlayerRunner
+  build-depends:       base >= 4.7 && < 5
+                     , network > 2.6.0.0
+                     , network-simple
+                     , clock
+                     , vector
+                     , mtl
+                     , semigroups
+                     , zlib
+                     , containers
+                     , lens
+                     , binary
+                     , array
+                     , bytestring
+                     , zmidi-core
+                     , vector-binary-instances
+  default-language:    Haskell2010
+
+executable mseq
+  hs-source-dirs:      app
+
+  if flag(usePortMidi)
+    main-is:             MainPortMidi.hs
+  else
+    main-is:             MainLinux.hs
+  --extensions:      CPP, ForeignFunctionInterface
+  --c-sources:      player/player.c
+
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N2 -Wall -fwarn-name-shadowing -fno-warn-type-defaults -fno-warn-missing-signatures -fno-warn-unused-binds -fno-warn-unused-matches
+
+  build-depends:       base
+                     , mseq
+                     , network > 2.6.0.0
+                     , network-simple
+                     , clock
+                     , vector
+                     , mtl
+                     , semigroups
+                     , zlib
+                     , containers
+                     , lens
+                     , binary
+                     , array
+                     , bytestring
+                     , zmidi-core
+                     , vector-binary-instances
+  if flag(usePortMidi)
+    build-depends:
+      PortMidi
+
+  other-modules:      Application
+                      , MainCommon
+                      , ModeActions
+
+
+  if flag(usePortMidi)
+    other-modules:
+      PortMidiHelpers
+      , MainPortMidi
+  default-language:    Haskell2010
+
+test-suite mseq-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  build-depends:       base
+                     , mseq
+                     , hspec
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/githubuser/mseq

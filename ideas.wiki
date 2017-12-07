@@ -1,0 +1,8 @@
+
+= MetaSeq =
+
+== Use cases: ==
+  * Program beats, one color per channel
+  * Have one melodic sequence over X bars.
+    Map counter tones to certain notes, and if the original notes change, it
+    will be reflected automatically in the counter notes.

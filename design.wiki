@@ -1,0 +1,65 @@
+
+= A Reaktor (or minihost modular) for sequencing =
+
+The goal is to create functionality by piecing together sequencers into larger
+things.
+An "arrangement lane" is essentially just a sequencer of a SequencerID.
+A group of such sequencers can be connected to generating data for a specific
+channel.
+A full arrangment is just a collection of such collections.
+
+Between sequencers we can add Transformers, which are essentially configurable
+functions. E.g for mapping a sequencer output to a certain "scale"(which is
+just a sequence of numbers to snap to), or to lengthen/shorten outputs by a
+constant.
+The inputs of Transformers can in itself also be sequenced.
+
+
+
+= Sequencer =
+  * This would be a "lane" currently.
+  * Basically just an IntMap of (On|Off).
+  * Configurable if it should trigger an Off before each new On, if an On is
+    active.
+
+
+= SequenceRunner =
+  * Steps a sequencer, outputting on's and off's.
+  * Takes care of emitting off's correctly when looping.
+
+= SequencerView =
+  * Visualises a Sequencer
+  * Currently SeqEditMode is one of these
+  * Has access to an API of edits to a sequencer/group.
+  * Renders to something(currently midi controllers) and takes input to
+    transform Seq/SeqGroup instances.
+
+= SequencerGroupView =
+  * Similar to SequencerView but handles groups instead.
+  * LaneMode would be one of these.
+
+
+= Other Views =
+  For things like control of playback etc.
+
+= ComboView =
+  The current arrangement mode is a good example of a combo view.
+  At the core it's a SequencerGroupView
+
+  
+= Recorder =
+  * Reacts to some form of input and inserts it into a sequencer.
+  * Current implementation handles midi note events, 
+  * Could just as well be connected to CC input, and sent to sequencers with
+    Views for easy CC editing.
+
+
+= Player = 
+  * Actually performas midi playback. This will be essentially the same as now.
+
+
+
+= Sync and other midi transport stuff =
+  This has no real design yet, and will continue to be ad-hoc until the
+  sequencing core and UI is done.
+
